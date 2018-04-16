@@ -1,0 +1,660 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 16/04/2018 13:37:43
+
+00001000                             1      org $1000
+00001000                             2  
+00001000                             3  *-------------------------------------------------------
+00001000                             4  *Choose to be Evil Wizard or New Romancers
+00001000                             5  *-------------------------------------------------------
+00001000                             6  
+00001000                             7  *-------------------------------------------------------
+00001000                             8  *Validation values to be used, modify as needed
+00001000                             9  *Add additional validation values as required
+00001000                            10  *-------------------------------------------------------
+00001000  =00000000                 11  exit        EQU 0      used to exit assembly program
+00001000  =00000064                 12  max_feed    EQU 100    max amount of money allowed to spend on feed
+00001000  =0000000A                 13  max_horses  EQU 10     max number of horses
+00001000  =00000005                 14  max_stablemen   EQU 5  max number of stablemen allowed
+00001000  =0000000A                 15  max_knights EQU 10     min soldiers
+00001000  =00000001                 16  min_charge  EQU 1      min rate of fuel use based of speed (oats for horses)
+00001000  =00000005                 17  max_charge  EQU 5      max rate e.g. Flank       
+00001000  =00000005                 18  hit_point   EQU 5      points accumilated on castle (objective) strike
+00001000  =00000008                 19  miss_point  EQU 8      points deducted for ordinace miss
+00001000                            20  
+00001000  =00000064                 21  mine_loc    EQU 100    example for a hit
+00001000                            22  
+00001000                            23  
+00001000                            24  *Start of Game
+00001000                            25  start:
+00001000  31FC 0064 4000            26      move.w  #100,$4000 put score/health in memory location $4000
+00001006  47F8 4000                 27      lea     $4000,A3   assign address A3 to that memory location
+0000100A  33FC 0190 00003AD2        28      move.w  #400,gold_amnt
+00001012                            29      
+00001012  6100 1FFA                 30      bsr     welcome    branch to the welcome subroutine
+00001016  6100 200C                 31      bsr     input      branch to the input subroutine
+0000101A  6100 1FE8                 32      bsr     game       branch to the game subroutine
+0000101E                            33  *Game loop
+00003000                            34      org     $3000      the rest of the program is to be located from 3000 onwards
+00003000                            35  
+00003000                            36  setup_game:
+00003000  4241                      37      clr     d1
+00003002                            38  
+00003002  4E75                      39      rts
+00003004                            40  *-------------------------------------------------------
+00003004                            41  *-------------------Game Subroutine---------------------
+00003004                            42  *-------------------------------------------------------
+00003004                            43  game:
+00003004  6100 0026                 44      bsr     gameloop   branch to gameloop subroutine
+00003008  4E75                      45      rts                return from game: subroutine
+0000300A                            46            
+0000300A                            47  end:
+0000300A  FFFF FFFF                 48      simhalt
+0000300E                            49  
+0000300E                            50  *-------------------------------------------------------
+0000300E                            51  *-------------------Welcome Subroutine------------------
+0000300E                            52  *-------------------------------------------------------
+0000300E                            53  welcome:
+0000300E  6100 0446                 54      bsr     endl            branch to endl subroutine
+00003012  43F9 0000346F             55      lea     welcome_msg,A1  assign message to address register A1
+00003018  303C 000E                 56      move.w  #14,D0          move literal 14 to DO
+0000301C  4E4F                      57      trap    #15             trap and interpret value in D0
+0000301E  6100 0436                 58      bsr     endl            branch to endl subroutine
+00003022  4E75                      59      rts                     return from welcome: subroutine
+00003024                            60  
+00003024                            61  *-------------------------------------------------------
+00003024                            62  *---------Gameplay Input Values Subroutine--------------
+00003024                            63  *-------------------------------------------------------    
+00003024                            64  input:
+00003024  61DA                      65      bsr     setup_game
+00003026  6100 00FA                 66      bsr     start_game          branch to castle choice subroutine
+0000302A                            67     * bsr     feed            branch to feed input subroutine
+0000302A                            68     * bsr     horses          branch to ship input subroutine
+0000302A                            69     * bsr     rate            branch to rate (charging speed) input subroutine
+0000302A                            70     * bsr     distance        branch to mission distance/location input subroutine
+0000302A                            71     * bsr     soldiers        branch to soldiers input subroutine
+0000302A  4E75                      72      rts
+0000302C                            73  
+0000302C                            74  *-------------------------------------------------------
+0000302C                            75  *----------------Gameloop (main loop)-------------------
+0000302C                            76  *------------------------------------------------------- 
+0000302C                            77  gameloop:
+0000302C  6100 0028                 78      bsr     update          branch to update game subroutine 
+00003030  6100 03F6                 79      bsr     clear_screen    clears the screen         
+00003034  6100 003A                 80      bsr     draw            branch to draw screen subroutine
+00003038  6100 03EE                 81      bsr     clear_screen    clears the screen
+0000303C  6100 0350                 82      bsr     gameplay        branch to gameplay subroutine
+00003040  6100 03E6                 83      bsr     clear_screen    clears the screen
+00003044  6100 0366                 84      bsr     hud             branch to display HUD subroutine
+00003048  6100 03DE                 85      bsr     clear_screen    clears the screen
+0000304C  6100 03E6                 86      bsr     replay          branch to replay game subroutine
+00003050  6100 03D6                 87      bsr     clear_screen    clears the screen
+00003054  4E75                      88      rts                     return from gameloop: subroutine
+00003056                            89  
+00003056                            90  *-------------------------------------------------------
+00003056                            91  *---------------Update Mission Progress-----------------
+00003056                            92  *  Move to battle location, engage enemy, fire and take
+00003056                            93  *  fire, complete mission and return to base
+00003056                            94  *------------------------------------------------------- 
+00003056                            95  update:
+00003056  6100 03FE                 96      bsr     endl            print a CR and LF
+0000305A  6100 03AE                 97      bsr     decorate        decorate with dots using a loop
+0000305E  43F9 00003A64             98      lea     update_msg,A1   
+00003064  303C 000E                 99      move.w  #14,D0
+00003068  4E4F                     100      trap    #15
+0000306A  6100 039E                101      bsr     decorate
+0000306E  4E75                     102      rts
+00003070                           103  *-------------------------------------------------------
+00003070                           104  *---------------Draw Mission Updates--------------------
+00003070                           105  * Draw the game progress information, status regarding
+00003070                           106  * mission
+00003070                           107  *------------------------------------------------------- 
+00003070                           108  draw:
+00003070  6100 03E4                109      bsr     endl
+00003074  6100 0394                110      bsr     decorate
+00003078  43F9 00003A76            111      lea     draw_msg,A1
+0000307E  303C 000E                112      move.w  #14,D0
+00003082  4E4F                     113      trap    #15
+00003084  6100 0384                114      bsr     decorate
+00003088  4E75                     115      rts
+0000308A                           116     
+0000308A                           117  *-------------------------------------------------------
+0000308A                           118  *---------------Draw Mission Updates--------------------
+0000308A                           119  * Draw the game progress information, status regarding
+0000308A                           120  * mission
+0000308A                           121  *------------------------------------------------------- 
+0000308A                           122  output_stats:
+0000308A  43F9 00003517            123      lea     gold_info,a1
+00003090  3239 00003AD2            124      move.w  gold_amnt,d1
+00003096  303C 0011                125      move.w  #17,d0
+0000309A  4E4F                     126      trap    #15
+0000309C  43F9 0000346C            127      lea     crlf,a1
+000030A2  303C 000D                128      move.w  #13,d0
+000030A6  4E4F                     129      trap    #15
+000030A8  43F9 00003532            130      lea     feed_info,a1
+000030AE  3239 00003AD0            131      move.w  feed_amnt,d1
+000030B4  303C 0011                132      move.w  #17,d0
+000030B8  4E4F                     133      trap    #15
+000030BA  43F9 0000346C            134      lea     crlf,a1
+000030C0  303C 000D                135      move.w  #13,d0
+000030C4  4E4F                     136      trap    #15
+000030C6  43F9 0000354D            137      lea     horse_info,a1
+000030CC  3239 00003AD4            138      move.w  horse_amnt,d1
+000030D2  303C 0011                139      move.w  #17,d0
+000030D6  4E4F                     140      trap    #15
+000030D8  43F9 0000346C            141      lea     crlf,a1
+000030DE  303C 000D                142      move.w  #13,d0
+000030E2  4E4F                     143      trap    #15
+000030E4  43F9 0000356A            144      lea     knight_info,a1
+000030EA  3239 00003AD8            145      move.w  knight_amnt,d1
+000030F0  303C 0011                146      move.w  #17,d0
+000030F4  4E4F                     147      trap    #15
+000030F6  43F9 0000346C            148      lea     crlf,a1
+000030FC  303C 000D                149      move.w  #13,d0
+00003100  4E4F                     150      trap    #15
+00003102  43F9 00003588            151      lea     stablemen_info,a1
+00003108  3239 00003AD6            152      move.w  stablemen_amnt,d1
+0000310E  303C 0011                153      move.w  #17,d0
+00003112  4E4F                     154      trap    #15
+00003114  43F9 0000346C            155      lea     crlf,a1
+0000311A  303C 000D                156      move.w  #13,d0
+0000311E  4E4F                     157      trap    #15
+00003120                           158       
+00003120  4E75                     159      rts
+00003122                           160     
+00003122                           161  *-------------------------------------------------------
+00003122                           162  *-----------------Start of the game---------------------
+00003122                           163  * start of the game in the market, where player buys
+00003122                           164  * feed, horses, stablemen and knights to then move out
+00003122                           165  *-------------------------------------------------------  
+00003122                           166  start_game:
+00003122  303C 0017                167      move.w  #23,D0
+00003126  7264                     168      move.l  #100,D1
+00003128  4E4F                     169      trap    #15
+0000312A  6100 02FC                170      bsr     clear_screen
+0000312E  4241                     171      clr     d1
+00003130  6100 0324                172      bsr     endl
+00003134  6100 02D4                173      bsr     decorate
+00003138  6100 FF50                174      bsr     output_stats
+0000313C  43F9 000035E7            175      lea     start_msg,A1
+00003142  4241                     176      clr     D1
+00003144  303C 000E                177      move.w  #14,D0
+00003148  4E4F                     178      trap    #15
+0000314A  343C 0062                179      move.w  #98,D2
+0000314E  363C 0066                180      move.w  #102,D3
+00003152  383C 0068                181      move.w  #104,D4
+00003156  3A3C 0073                182      move.w  #115,D5
+0000315A  303C 0005                183      move.w  #5,D0
+0000315E  4E4F                     184      trap    #15
+00003160  B441                     185      cmp     D1,D2
+00003162  6700 0190                186      beq     knights  
+00003166  B641                     187      cmp     D1,D3
+00003168  6700 000E                188      beq     feed
+0000316C  B841                     189      cmp     D1,D4
+0000316E  6700 00F0                190      beq     stablemen
+00003172  BA41                     191      cmp     D1,D5
+00003174  6700 0076                192      beq     horses
+00003178                           193      
+00003178                           194  *-------------------------------------------------------
+00003178                           195  *-----------------------Horse feed-----------------------
+00003178                           196  * Buy the feed load for each horse. Feed costs money
+00003178                           197  *------------------------------------------------------- 
+00003178                           198  feed:
+00003178  303C 0017                199      move.w  #23,D0
+0000317C  323C 0064                200      move.w  #100,D1
+00003180  4E4F                     201      trap    #15
+00003182  6100 02A4                202      bsr     clear_screen
+00003186  4241                     203      clr     d1
+00003188  6100 02CC                204      bsr     endl
+0000318C  6100 027C                205      bsr     decorate
+00003190  6100 FEF8                206      bsr     output_stats
+00003194  43F9 000036D4            207      lea     feed_msg,A1
+0000319A  303C 000E                208      move.w  #14,D0
+0000319E  4E4F                     209      trap    #15
+000031A0  303C 0004                210      move.w  #4, D0
+000031A4  4E4F                     211      trap    #15
+000031A6  B27C 0000                212      cmp     #0,D1
+000031AA  6700 FF76                213      beq     start_game
+000031AE  3801                     214      move.w  d1,d4
+000031B0  B87C 0064                215      cmp     #100,d4
+000031B4  6E00 01C6                216      bgt     feed_error
+000031B8  B87C 0000                217      cmp     #0,d4
+000031BC  6D00 01BE                218      blt     feed_error
+000031C0  3A04                     219      move.w  d4,d5
+000031C2  BA7C 0064                220      cmp     #max_feed,d5
+000031C6  6E00 01B4                221      bgt     feed_error
+000031CA  CAFC 0014                222      mulu.w  #20,d5
+000031CE  B879 00003AD2            223      cmp     gold_amnt,d4
+000031D4  6E00 01A6                224      bgt     feed_error
+000031D8  9979 00003AD2            225      sub.w   d4,gold_amnt
+000031DE  DB79 00003AD0            226      add.w   d5,feed_amnt
+000031E4                           227  
+000031E4  6092                     228      bra     feed
+000031E6  6100 0222                229      bsr     decorate
+000031EA  4E75                     230      rts
+000031EC                           231  
+000031EC                           232  *-------------------------------------------------------
+000031EC                           233  *-------------------------Horses------------------------
+000031EC                           234  * Number of horses bought 
+000031EC                           235  *------------------------------------------------------- 
+000031EC                           236  horses:
+000031EC  303C 0017                237      move.w  #23,D0
+000031F0  323C 0064                238      move.w  #100,D1
+000031F4  4E4F                     239      trap    #15
+000031F6  6100 0230                240      bsr     clear_screen
+000031FA  4241                     241      clr     d1
+000031FC  6100 0258                242      bsr     endl
+00003200  6100 0208                243      bsr     decorate
+00003204  6100 FE84                244      bsr     output_stats
+00003208  43F9 00003782            245      lea     horses_msg,A1
+0000320E  303C 000E                246      move.w  #14,D0
+00003212  4E4F                     247      trap    #15
+00003214  303C 0004                248      move.w  #4, D0
+00003218  4E4F                     249      trap    #15
+0000321A  B27C 0000                250      cmp     #0,D1
+0000321E  6700 FF02                251      beq     start_game
+00003222  3801                     252      move.w  d1,d4
+00003224  B87C 0064                253      cmp     #100,d4
+00003228  6E00 014C                254      bgt     horses_error
+0000322C  B87C 0000                255      cmp     #0,d4
+00003230  6D00 0144                256      blt     horses_error
+00003234  3A04                     257      move.w  d4,d5
+00003236  BA7C 000A                258      cmp     #max_horses,d5
+0000323A  6E00 013A                259      bgt     horses_error
+0000323E  C8FC 0014                260      mulu.w  #20,d4
+00003242  B879 00003AD2            261      cmp     gold_amnt,d4
+00003248  6E00 012C                262      bgt     horses_error
+0000324C  9979 00003AD2            263      sub.w   d4,gold_amnt
+00003252  DB79 00003AD4            264      add.w   d5,horse_amnt
+00003258                           265      
+00003258  6092                     266      bra     horses
+0000325A  6100 01AE                267      bsr     decorate
+0000325E  4E75                     268      rts
+00003260                           269  
+00003260                           270  *-------------------------------------------------------
+00003260                           271  *----------------------Stablemen------------------------
+00003260                           272  * Stablemen to take care of horses
+00003260                           273  *------------------------------------------------------- 
+00003260                           274  stablemen:
+00003260  303C 0017                275      move.w  #23,D0
+00003264  323C 0064                276      move.w  #100,D1
+00003268  4E4F                     277      trap    #15
+0000326A  6100 01BC                278      bsr     clear_screen
+0000326E  4241                     279      clr     d1
+00003270  6100 01E4                280      bsr     endl
+00003274  6100 0194                281      bsr     decorate
+00003278  6100 FE10                282      bsr     output_stats
+0000327C  43F9 00003836            283      lea     stablemen_msg,A1
+00003282  303C 000E                284      move.w  #14,D0
+00003286  4E4F                     285      trap    #15
+00003288  303C 0004                286      move.w  #4, D0
+0000328C  4E4F                     287      trap    #15
+0000328E  B27C 0000                288      cmp     #0,D1
+00003292  6700 FE8E                289      beq     start_game
+00003296  3801                     290      move.w  d1,d4
+00003298  B87C 0064                291      cmp     #100,d4
+0000329C  6E00 00EA                292      bgt     stablemen_error
+000032A0  B87C 0000                293      cmp     #0,d4
+000032A4  6D00 00E2                294      blt     stablemen_error
+000032A8  3A04                     295      move.w  d4,d5
+000032AA  BA7C 0005                296      cmp     #max_stablemen,d5
+000032AE  6E00 00D8                297      bgt     stablemen_error
+000032B2  C8FC 000F                298      mulu.w  #15,d4
+000032B6  B879 00003AD2            299      cmp     gold_amnt,d4
+000032BC  6E00 00CA                300      bgt     stablemen_error
+000032C0  9979 00003AD2            301      sub.w   d4,gold_amnt
+000032C6  DB79 00003AD6            302      add.w   d5,stablemen_amnt
+000032CC                           303      
+000032CC  6092                     304      bra     stablemen
+000032CE  6100 013A                305      bsr     decorate
+000032D2  4E75                     306      rts
+000032D4                           307  
+000032D4                           308  *-------------------------------------------------------
+000032D4                           309  *------------------Mission Distance---------------------
+000032D4                           310  * Distance to battle location
+000032D4                           311  *------------------------------------------------------- 
+000032D4                           312  distance:
+000032D4  6100 0180                313      bsr     endl
+000032D8  6100 0130                314      bsr     decorate
+000032DC  43F9 000038E6            315      lea     distance_msg,A1
+000032E2  303C 000E                316      move.w  #14,D0
+000032E6  4E4F                     317      trap    #15
+000032E8  303C 0004                318      move.w  #4, D0
+000032EC  4E4F                     319      trap    #15
+000032EE  6100 011A                320      bsr     decorate
+000032F2  4E75                     321      rts
+000032F4                           322  
+000032F4                           323  *-------------------------------------------------------
+000032F4                           324  *-----------------------Knights-------------------------
+000032F4                           325  * Number of knights
+000032F4                           326  *-------------------------------------------------------   
+000032F4                           327  knights:
+000032F4  303C 0017                328      move.w  #23,D0
+000032F8  323C 0064                329      move.w  #100,D1
+000032FC  4E4F                     330      trap    #15
+000032FE  6100 0128                331      bsr     clear_screen
+00003302  4241                     332      clr     d1
+00003304  6100 0150                333      bsr     endl
+00003308  6100 0100                334      bsr     decorate
+0000330C  6100 FD7C                335      bsr     output_stats
+00003310  43F9 0000398C            336      lea     soldiers_msg,A1
+00003316  303C 000E                337      move.w  #14,D0
+0000331A  4E4F                     338      trap    #15
+0000331C  303C 0004                339      move.w  #4, D0
+00003320  4E4F                     340      trap    #15
+00003322  B27C 0000                341      cmp     #0,D1
+00003326  6700 FDFA                342      beq     start_game
+0000332A  3801                     343      move.w  d1,d4
+0000332C  B87C 0064                344      cmp     #100,d4
+00003330  6E00 0050                345      bgt     knight_error
+00003334  B87C 0000                346      cmp     #0,d4
+00003338  6D00 0048                347      blt     knight_error
+0000333C  3A04                     348      move.w  d4,d5
+0000333E  BA7C 000A                349      cmp     #max_knights,d5
+00003342  6E00 003E                350      bgt     knight_error
+00003346  C8FC 001E                351      mulu.w  #30,d4
+0000334A  B879 00003AD2            352      cmp     gold_amnt,d4
+00003350  6E00 0030                353      bgt     knight_error
+00003354  9979 00003AD2            354      sub.w   d4,gold_amnt
+0000335A  DB79 00003AD8            355      add.w   d5,knight_amnt
+00003360                           356      
+00003360  6092                     357      bra     knights
+00003362  6100 00A6                358      bsr     decorate
+00003366  4E75                     359      rts
+00003368                           360  
+00003368                           361  *-------------------------------------------------------
+00003368                           362  *------------------Data Boundary Check------------------
+00003368                           363  *------------------------------------------------------- 
+00003368                           364  boundary_check:
+00003368  43F9 00003A2C            365      lea     boundary_msg,a1
+0000336E  303C 000D                366      move    #13,d0
+00003372  4E4F                     367      trap    #15
+00003374  4E75                     368      rts
+00003376                           369  
+00003376                           370  horses_error:
+00003376  61F0                     371      bsr     boundary_check
+00003378  4EF8 31EC                372      jmp     horses
+0000337C                           373      
+0000337C                           374  feed_error:
+0000337C  61EA                     375      bsr     boundary_check
+0000337E  4EF8 3178                376      jmp     feed
+00003382                           377      
+00003382                           378  knight_error:
+00003382  61E4                     379      bsr     boundary_check
+00003384  4EF8 32F4                380      jmp     knights
+00003388                           381      
+00003388                           382  stablemen_error:
+00003388  61DE                     383      bsr     boundary_check
+0000338A  4EF8 3260                384      jmp     stablemen
+0000338E                           385  *-------------------------------------------------------
+0000338E                           386  *---Game Play (Mission Progress, Battle Maneuvers)------
+0000338E                           387  *------------------------------------------------------- 
+0000338E                           388  gameplay:
+0000338E  6100 00C6                389      bsr     endl
+00003392  6100 0076                390      bsr     decorate
+00003396  43F9 00003A55            391      lea     gameplay_msg,A1
+0000339C  303C 000E                392      move.w  #14,D0
+000033A0  4E4F                     393      trap    #15
+000033A2  6100 0066                394      bsr     decorate
+000033A6  6100 0026                395      bsr     collision
+000033AA  4E75                     396      rts
+000033AC                           397  
+000033AC                           398  *-------------------------------------------------------
+000033AC                           399  *-----------------Heads Up Display (Score)--------------
+000033AC                           400  * Retrieves the score from memory location
+000033AC                           401  *-------------------------------------------------------   
+000033AC                           402  hud:
+000033AC                           403  
+000033AC  6100 00A8                404      bsr     endl
+000033B0  6100 0058                405      bsr     decorate
+000033B4  43F9 00003AC2            406      lea     hud_msg,A1
+000033BA  303C 000E                407      move.w  #14,D0
+000033BE  4E4F                     408      trap    #15
+000033C0  3213                     409      move.w  (A3),D1     retrieve the value A3 point to and move to D1
+000033C2  303C 0003                410      move.w  #3,D0       move literal 3 to D0
+000033C6  4E4F                     411      trap    #15         intrepret value in D0, which 3 which displays D1
+000033C8  6100 0040                412      bsr     decorate
+000033CC  4E75                     413      rts
+000033CE                           414  
+000033CE                           415  *-------------------------------------------------------
+000033CE                           416  *-----------------------Taking Fire---------------------
+000033CE                           417  * This could be used for collision detection, if 
+000033CE                           418  *-------------------------------------------------------
+000033CE                           419  collision:
+000033CE  323C 0064                420      move.w  #mine_loc,D1
+000033D2  B27C 0064                421      cmp     #100,D1 is( x == 100)?
+000033D6  6600 0010                422      bne     collision_miss if x is equal to 100, then hit
+000033DA                           423  collision_hit:
+000033DA                           424      *hit
+000033DA  43F9 00003A84            425      lea     hit_msg,A1
+000033E0  303C 000E                426      move    #14,D0
+000033E4  4E4F                     427      trap    #15
+000033E6  4E75                     428      rts
+000033E8                           429      
+000033E8                           430  collision_miss:
+000033E8                           431      *miss
+000033E8  43F9 00003A8C            432      lea     miss_msg,A1
+000033EE  303C 000E                433      move    #14,D0
+000033F2  4E4F                     434      trap    #15
+000033F4  4E75                     435      rts
+000033F6                           436      
+000033F6                           437  *-------------------------------------------------------
+000033F6                           438  *--------------------------Loop-------------------------
+000033F6                           439  *-------------------------------------------------------
+000033F6                           440  loop:
+000033F6  363C 0005                441      move.w  #5, D3 loop counter D3=5
+000033FA                           442  next:
+000033FA  43F9 00003A92            443      lea     loop_msg,A1
+00003400  303C 000E                444      move.w  #14,D0
+00003404  4E4F                     445      trap    #15
+00003406  5343                     446      sub     #1,D3   decrement loop counter
+00003408  66F0                     447      bne     next    repeat until D0=0
+0000340A                           448  
+0000340A                           449  *-------------------------------------------------------
+0000340A                           450  *------------------Screen Decoration--------------------
+0000340A                           451  *-------------------------------------------------------
+0000340A                           452  decorate:
+0000340A  363C 003C                453      move.w  #60, D3
+0000340E  6100 0046                454      bsr     endl
+00003412                           455  out:
+00003412  43F9 00003A92            456      lea     loop_msg,A1
+00003418  303C 000E                457      move.w  #14,D0
+0000341C  4E4F                     458      trap    #15
+0000341E  5343                     459      sub     #1,D3   decrement loop counter
+00003420  66F0                     460      bne     out     repeat until D0=0
+00003422  6100 0032                461      bsr     endl
+00003426  4E75                     462      rts
+00003428                           463      
+00003428                           464  clear_screen: 
+00003428  303C 000B                465      move.w  #11,D0      clear screen
+0000342C  323C FF00                466      move.w  #$ff00,D1
+00003430  4E4F                     467      trap    #15
+00003432  4E75                     468      rts
+00003434                           469  *-------------------------------------------------------
+00003434                           470  *------------------------Replay-------------------------
+00003434                           471  *-------------------------------------------------------
+00003434                           472  replay:
+00003434  6100 0020                473      bsr     endl
+00003438  43F9 00003A94            474      lea     replay_msg,A1
+0000343E  303C 000E                475      move.w  #14,D0
+00003442  4E4F                     476      trap    #15
+00003444                           477      
+00003444  303C 0004                478      move.w  #4,D0
+00003448  4E4F                     479      trap    #15
+0000344A                           480  
+0000344A  B27C 0000                481      cmp     #exit,D1
+0000344E  6700 FBBA                482      beq     end         if SR Z register contains 1 beq => Branch Equals
+00003452  6100 FBD8                483      bsr     gameloop
+00003456                           484  
+00003456                           485  endl:
+00003456  48E7 8040                486      movem.l D0/A1,-(A7)
+0000345A  303C 000E                487      move    #14,D0
+0000345E  43F9 0000346C            488      lea     crlf,A1
+00003464  4E4F                     489      trap    #15
+00003466  4CDF 0201                490      movem.l (A7)+,D0/A1
+0000346A  4E75                     491      rts
+0000346C                           492      
+0000346C                           493  *-------------------------------------------------------
+0000346C                           494  *-------------------Data Delarations--------------------
+0000346C                           495  *-------------------------------------------------------
+0000346C                           496  
+0000346C= 0D 0A 00                 497  crlf:           dc.b    $0D,$0A,0
+0000346F= 2A 2A 2A 2A 2A 2A ...    498  welcome_msg:    dc.b    '************************************************************'
+000034AB= 0D 0A                    499                  dc.b    $0D,$0A
+000034AD= 53 6F 72 74 4F 66 ...    500                  dc.b    'SortOfZorkQuest: Assault on Egreth Castle'
+000034D6= 0D 0A                    501                  dc.b    $0D,$0A
+000034D8= 2A 2A 2A 2A 2A 2A ...    502                  dc.b    '************************************************************'
+00003514= 0D 0A 00                 503                  dc.b    $0D,$0A,0
+00003517= 47 6F 6C 64 20 79 ...    504  gold_info       dc.b    'Gold you currently have : ',0
+00003532= 46 65 65 64 20 79 ...    505  feed_info       dc.b    'Feed you currently have : ',0
+0000354D= 48 6F 72 73 65 73 ...    506  horse_info      dc.b    'Horses you currently have : ',0
+0000356A= 4B 6E 69 67 68 74 ...    507  knight_info     dc.b    'Knights you currently have : ',0
+00003588= 53 74 61 62 6C 65 ...    508  stablemen_info  dc.b    'Stablemen you currently have : ',0
+000035A8= 0D 0A                    509                  dc.b    $0D,$0A
+000035AA= 2A 2A 2A 2A 2A 2A ...    510                  dc.b    '************************************************************',0
+000035E7= 59 6F 75 20 61 72 ...    511  start_msg       dc.b    'You are currently in the market.'
+00003607= 0D 0A                    512                  dc.b    $0D,$0A
+00003609= 59 6F 75 20 63 61 ...    513                  dc.b    'You can go buy [F]eed, go to the [S]table to buy horses,'
+00003641= 0D 0A                    514                  dc.b    $0D,$0A
+00003643= 46 61 72 6D 5B 48 ...    515                  dc.b    'Farm[H]ouse to buy stablehands or [B]arracks to buy knights.'
+0000367F= 0D 0A                    516                  dc.b    $0D,$0A
+00003681= 43 68 6F 69 63 65 ...    517                  dc.b    'Choice : ',0
+0000368B= 57 68 69 63 68 20 ...    518  choice_msg:     dc.b    'Which castle will you head to? ([N]orth, [E]ast or [W]est)'
+000036C5= 0D 0A                    519                  dc.b    $0D,$0A
+000036C7= 44 69 72 65 63 74 ...    520                  dc.b    'Direction : ',0
+000036D4= 46 65 65 64 20 63 ...    521  feed_msg:       dc.b    'Feed costs 1 gold per 20 units of feed.'
+000036FB= 0D 0A                    522                  dc.b    $0D,$0A
+000036FD= 41 20 68 6F 72 73 ...    523                  dc.b    'A horse uses 2 units of feed per kilometre.'
+00003728= 0D 0A                    524                  dc.b    $0D,$0A
+0000372A= 45 6E 74 65 72 20 ...    525                  dc.b    'Enter amount of money spent for feed, or 0 to go back to the market.'
+0000376E= 0D 0A                    526                  dc.b    $0D,$0A
+00003770= 41 6D 6F 75 6E 74 ...    527                  dc.b    'Amount of feed : ',0
+00003782= 4F 6E 65 20 68 6F ...    528  horses_msg:     dc.b    'One horse costs 20 gold.'
+0000379A= 0D 0A                    529                  dc.b    $0D,$0A
+0000379C= 45 61 63 68 20 68 ...    530                  dc.b    'Each horse must be accompanied with a knight and a stableman'
+000037D8= 0D 0A                    531                  dc.b    $0D,$0A
+000037DA= 45 6E 74 65 72 20 ...    532                  dc.b    'Enter amount of horses you want to buy, or 0 to go back to the market.'
+00003820= 0D 0A                    533                  dc.b    $0D,$0A
+00003822= 41 6D 6F 75 6E 74 ...    534                  dc.b    'Amount of horses : ',0
+00003836= 4F 6E 65 20 53 74 ...    535  stablemen_msg:  dc.b    'One Stableman costs 15 gold.'
+00003852= 0D 0A                    536                  dc.b    $0D,$0A
+00003854= 41 20 73 74 61 62 ...    537                  dc.b    'A stableman can take care of 2 horses at once.'
+00003882= 0D 0A                    538                  dc.b    $0D,$0A
+00003884= 45 6E 74 65 72 20 ...    539                  dc.b    'Enter amount of stablemen you want to buy, or 0 to go back to the market.'
+000038CD= 0D 0A                    540                  dc.b    $0D,$0A
+000038CF= 41 6D 6F 75 6E 74 ...    541                  dc.b    'Amount of stablemen : ',0
+000038E6= 4D 69 73 73 69 6F ...    542  distance_msg:   dc.b    'Mission distance e.g. 40 (with 100 units of feed  '
+00003918= 0D 0A                    543                  dc.b    $0D,$0A
+0000391A= 4F 6E 65 20 54 68 ...    544                  dc.b    'One Third speed 20 units remain for manuvouirs) horses '
+00003951= 0D 0A                    545                  dc.b    $0D,$0A
+00003953= 48 6F 72 73 65 73 ...    546                  dc.b    'Horses without feed are lost.'
+00003970= 0D 0A                    547                  dc.b    $0D,$0A
+00003972= 45 6E 74 65 72 20 ...    548                  dc.b    'Enter mission distance : ',0
+0000398C= 45 61 63 68 20 6B ...    549  soldiers_msg:   dc.b    'Each knight is 30 gold.'
+000039A3= 0D 0A                    550                  dc.b    $0D,$0A
+000039A5= 45 61 63 68 20 6B ...    551                  dc.b    'Each knight has to be assigned to a horse.'
+000039CF= 0D 0A                    552                  dc.b    $0D,$0A
+000039D1= 45 6E 74 65 72 20 ...    553                  dc.b    'Enter no. of knights you want to buy, or 0 to go back to the market.'
+00003A15= 0D 0A                    554                  dc.b    $0D,$0A
+00003A17= 41 6D 6F 75 6E 74 ...    555                  dc.b    'Amount of knights : ',0
+00003A2C= 4F 75 74 20 6F 66 ...    556  boundary_msg   dc.b    'Out of bounds, please change your choice!'
+00003A55= 41 64 64 20 47 61 ...    557  gameplay_msg:   dc.b    'Add Gameplay !',0
+00003A64= 55 70 64 61 74 65 ...    558  update_msg:     dc.b    'Update Gameplay !',0
+00003A76= 44 72 61 77 20 53 ...    559  draw_msg:       dc.b    'Draw Screen !',0
+00003A84= 53 74 72 69 6B 65 ...    560  hit_msg:        dc.b    'Strike!',0
+00003A8C= 4D 69 73 73 21 00        561  miss_msg:       dc.b    'Miss!',0
+00003A92= 2E 00                    562  loop_msg:       dc.b    '.',0
+00003A94= 45 6E 74 65 72 20 ...    563  replay_msg:     dc.b    'Enter 0 to Quit any other number to replay : ',0
+00003AC2= 53 63 6F 72 65 20 ...    564  hud_msg:        dc.b    'Score : ',0
+00003ACB                           565  
+00003ACC                           566  health:     ds.w    1
+00003ACE                           567  score:      ds.w    1 reserve space for score
+00003AD0= 0000                     568  feed_amnt:          dc.w    0
+00003AD2= 0000                     569  gold_amnt:          dc.w    0
+00003AD4= 0000                     570  horse_amnt:         dc.w    0
+00003AD6= 0000                     571  stablemen_amnt:     dc.w    0
+00003AD8= 0000                     572  knight_amnt:        dc.w    0
+00003ADA                           573  
+00003ADA                           574  
+00003ADA                           575      end start
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BOUNDARY_CHECK      3368
+BOUNDARY_MSG        3A2C
+CHOICE_MSG          368B
+CLEAR_SCREEN        3428
+COLLISION           33CE
+COLLISION_HIT       33DA
+COLLISION_MISS      33E8
+CRLF                346C
+DECORATE            340A
+DISTANCE            32D4
+DISTANCE_MSG        38E6
+DRAW                3070
+DRAW_MSG            3A76
+END                 300A
+ENDL                3456
+EXIT                0
+FEED                3178
+FEED_AMNT           3AD0
+FEED_ERROR          337C
+FEED_INFO           3532
+FEED_MSG            36D4
+GAME                3004
+GAMELOOP            302C
+GAMEPLAY            338E
+GAMEPLAY_MSG        3A55
+GOLD_AMNT           3AD2
+GOLD_INFO           3517
+HEALTH              3ACC
+HIT_MSG             3A84
+HIT_POINT           5
+HORSES              31EC
+HORSES_ERROR        3376
+HORSES_MSG          3782
+HORSE_AMNT          3AD4
+HORSE_INFO          354D
+HUD                 33AC
+HUD_MSG             3AC2
+INPUT               3024
+KNIGHTS             32F4
+KNIGHT_AMNT         3AD8
+KNIGHT_ERROR        3382
+KNIGHT_INFO         356A
+LOOP                33F6
+LOOP_MSG            3A92
+MAX_CHARGE          5
+MAX_FEED            64
+MAX_HORSES          A
+MAX_KNIGHTS         A
+MAX_STABLEMEN       5
+MINE_LOC            64
+MIN_CHARGE          1
+MISS_MSG            3A8C
+MISS_POINT          8
+NEXT                33FA
+OUT                 3412
+OUTPUT_STATS        308A
+REPLAY              3434
+REPLAY_MSG          3A94
+SCORE               3ACE
+SETUP_GAME          3000
+SOLDIERS_MSG        398C
+STABLEMEN           3260
+STABLEMEN_AMNT      3AD6
+STABLEMEN_ERROR     3388
+STABLEMEN_INFO      3588
+STABLEMEN_MSG       3836
+START               1000
+START_GAME          3122
+START_MSG           35E7
+UPDATE              3056
+UPDATE_MSG          3A64
+WELCOME             300E
+WELCOME_MSG         346F
